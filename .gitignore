@@ -36,9 +36,13 @@ ENV/
 backend/data/profiles.json
 backend/data/chat_history.json
 backend/data/prompts.json
+data/profiles.json
+data/chat_history.json
+data/prompts.json
 
 # Logs
 backend/logs/*.log
+logs/*.log
 
 # OS
 .DS_Store

@@ -2,7 +2,7 @@ import json
 import os
 
 class PromptManager:
-    def __init__(self, prompts_file="data/prompts.json"):
+    def __init__(self, prompts_file="../data/prompts.json"):
         self.prompts_file = prompts_file
         self.prompts = self.load_prompts()
     

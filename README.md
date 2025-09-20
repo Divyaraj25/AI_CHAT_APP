@@ -43,53 +43,86 @@
 - Node.js 14+ (for frontend development)
 - Docker (optional, for containerized deployment)
 
-### Local Installation
+## 🖥️ Local Development Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/ai-personal-assistant.git
-   cd ai-personal-assistant
-   ```
+### 1. Install Ollama Locally
 
-2. **Set up the backend**
-   ```bash
-   # Create and activate virtual environment
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-   # Install dependencies
-   pip install -r backend/requirements.txt
-   ```
-
-3. **Set up Ollama**
-   ```bash
-   # Download and install Ollama from https://ollama.ai/download
-   # Then pull a model (e.g., llama3.1:8b)
-   ollama pull llama3.1:8b
-   ```
-
-4. **Run the application**
-   ```bash
-   # Start the Flask backend
-   cd backend
-   python app.py
-   ```
-
-5. **Access the application**
-   Open your browser and navigate to `http://localhost:5000`
-
-### 🐳 Docker Deployment
+First, install and set up Ollama on your local machine:
 
 ```bash
-# Start all services
-cd ai-chat-app
-docker-compose up -d --build
+# Download and install Ollama from https://ollama.ai/download
+# Then pull a model (e.g., llama3.1:8b)
+ollama pull llama3.1:8b
 
-# Pull the Ollama model (first time only)
-docker-compose exec ollama ollama pull llama3.1:8b
+# Start the Ollama server (keep this running in a separate terminal)
+ollama serve
 ```
 
-Access the application at `http://localhost:5000`
+### 2. Set Up the Application
+
+#### Option A: Python Virtual Environment (Recommended for Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/divyaraj25/AI_CHAT_APP.git
+cd ai-personal-assistant/ai_chat_app
+
+# Create and activate virtual environment
+python -m venv venv
+# Windows:
+.\venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install Python dependencies
+pip install -r backend/requirements.txt
+
+# Start the Flask backend
+cd backend
+python app.py
+```
+
+#### Option B: Docker (Containerized)
+
+```bash
+# Navigate to the project directory
+cd ai_chat_app
+
+# Start the application (it will connect to your local Ollama instance)
+docker-compose up -d --build
+```
+
+### 3. Access the Application
+
+Open your browser and navigate to `http://localhost:5000`
+
+## 🔄 Connecting to Local Ollama
+
+The application is configured to connect to Ollama at `http://localhost:11434` by default. If your Ollama instance is running on a different port or host, you can set the `OLLAMA_URL` environment variable:
+
+```bash
+# When running with Python
+export OLLAMA_URL=http://your-ollama-host:port
+python backend/app.py
+
+# Or with Docker
+docker-compose run -e OLLAMA_URL=http://host.docker.internal:11434 ai-chat-app
+```
+
+## 🐳 Docker Compose Configuration
+
+The Docker setup includes:
+
+- The AI Chat Application (Flask backend + frontend)
+- Automatic connection to your local Ollama instance
+- Persistent storage for chat history and logs
+
+To rebuild the containers after making changes:
+
+```bash
+docker-compose down
+docker-compose up -d --build
+```
 
 ## 🎯 Key Categories
 
@@ -250,3 +283,39 @@ This AI Chat Assistant has the potential to positively impact users worldwide by
 - **Open Source:** Allows developers to contribute and customize the assistant for specific needs.
 
 The application is particularly valuable in regions where access to professional trainers, nutritionists, or tutors may be limited or expensive, making expert guidance more accessible to everyone.
+
+---
+
+## 👨‍💻 Author
+
+- **Name:** Divyaraj Makwana
+- **GitHub:** [@divyaraj25](https://github.com/divyaraj25)
+- **Email:** divyaraj.makwana9425@gmail.com
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+```
+MIT License
+
+Copyright (c) 2025 Divyarajsinh Zala
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

@@ -8,8 +8,8 @@ from termcolor import colored
 def setup_directories():
     """Create necessary directories"""
     directories = [
-        'backend/data',
-        'backend/logs',
+        'data',
+        'logs',
         'frontend/static/css',
         'frontend/static/js',
         'frontend/static/images',
@@ -23,21 +23,21 @@ def setup_directories():
 def create_default_files():
     """Create default data files if they don't exist"""
     # Default profiles file
-    profiles_file = Path('backend/data/profiles.json')
+    profiles_file = Path('data/profiles.json')
     if not profiles_file.exists():
         with open(profiles_file, 'w') as f:
             json.dump({}, f)
         print(colored("Created default profiles.json", attrs=['bold']))
     
     # Default chat history file
-    chat_history_file = Path('backend/data/chat_history.json')
+    chat_history_file = Path('data/chat_history.json')
     if not chat_history_file.exists():
         with open(chat_history_file, 'w') as f:
             json.dump({}, f)
         print(colored("Created default chat_history.json", attrs=['bold']))
     
     # Default prompts file
-    prompts_file = Path('backend/data/prompts.json')
+    prompts_file = Path('data/prompts.json')
     if not prompts_file.exists():
         default_prompts = {
             "daily_life": [

@@ -2,23 +2,23 @@ version: "3.8"
 
 services:
   ai-chat-app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - python_packages:/usr/local/lib/python3.9/site-packages
     environment:
       - FLASK_ENV=production
+      - PYTHONPATH=/app
+      - OLLAMA_HOST=host.docker.internal:11434  # Updated to use host.docker.internal
     restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
-  ollama_data:
+  app_data:
+  python_packages:

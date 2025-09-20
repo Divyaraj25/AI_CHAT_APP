@@ -4,7 +4,7 @@ from datetime import datetime
 import json
 
 class CustomLogger:
-    def __init__(self, log_dir="logs"):
+    def __init__(self, log_dir="../logs"):
         self.log_dir = log_dir
         os.makedirs(log_dir, exist_ok=True)
         

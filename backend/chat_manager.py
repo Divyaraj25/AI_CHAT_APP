@@ -5,10 +5,11 @@ from datetime import datetime
 import requests
 
 class ChatManager:
-    def __init__(self, history_file="data/chat_history.json", ollama_url="http://localhost:11434"):
+    def __init__(self, history_file="../data/chat_history.json", ollama_url=None):
         self.history_file = history_file
-        self.ollama_url = ollama_url
+        self.ollama_url = ollama_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
         self.chat_history = self.load_history()
+        print(f"Connecting to Ollama at: {self.ollama_url}")  # For debugging
     
     def load_history(self):
         os.makedirs(os.path.dirname(self.history_file), exist_ok=True)

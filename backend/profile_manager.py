@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 class ProfileManager:
-    def __init__(self, profiles_file="data/profiles.json"):
+    def __init__(self, profiles_file="../data/profiles.json"):
         self.profiles_file = profiles_file
         self.profiles = self.load_profiles()
     
