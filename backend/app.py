@@ -14,7 +14,16 @@ MISSING_USER_ID = "Missing user_id"
 app = Flask(__name__, 
             static_folder='../frontend/static',
             template_folder='../frontend/templates')
-CORS(app)
+
+# Configure CORS with appropriate headers for streaming
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # Initialize managers
 chat_manager = ChatManager()
@@ -25,8 +34,16 @@ prompt_manager = PromptManager()
 def index():
     return render_template('index.html')
 
-@app.route('/api/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
 def chat():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+        
     try:
         data = request.json
         user_id = data.get('user_id')
@@ -54,42 +71,109 @@ def chat():
         logger.log_chat("info", f"User message: {message}", user_id=user_id, chat_id=chat_id)
         
         def generate():
-            assistant_response = ""
-            for chunk in chat_manager.send_to_ollama(messages, profile_context=profile_context):
-                chunk_data = json.loads(chunk)
+            try:
+                assistant_response = ""
+                for chunk in chat_manager.send_to_ollama(messages, profile_context=profile_context):
+                    # Check if the client disconnected using a more reliable method
+                    # Remove the request.environ check as it's not available in this context
+                    # Instead, we'll rely on the generator being closed when client disconnets
+                    
+                    try:
+                        chunk_data = json.loads(chunk)
+                        
+                        if chunk_data.get('type') == 'content':
+                            content = chunk_data['content']
+                            assistant_response += content
+                            # Send immediately without buffering
+                            yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                        
+                        elif chunk_data.get('type') == 'error':
+                            error_msg = chunk_data.get('content', 'Unknown error')
+                            yield f"data: {json.dumps({'type': 'error', 'content': error_msg})}\n\n"
+                            logger.log_backend("error", f"Error in chat stream: {error_msg}")
+                            break
+                        
+                        elif chunk_data.get('type') == 'done':
+                            # Save assistant response to chat history
+                            if assistant_response.strip():  # Only save if we have content
+                                chat_manager.add_message(user_id, chat_id, "assistant", assistant_response)
+                                logger.log_chat("info", f"Assistant response saved: {len(assistant_response)} chars", user_id=user_id, chat_id=chat_id)
+                            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                            break
+                            
+                    except json.JSONDecodeError as e:
+                        logger.log_backend("error", f"JSON decode error in chat stream: {str(e)}")
+                        continue
+                    except Exception as e:
+                        logger.log_backend("error", f"Error processing chunk: {str(e)}")
+                        yield f"data: {json.dumps({'type': 'error', 'content': 'An error occurred while processing the response'})}\n\n"
+                        break
                 
-                if chunk_data.get('type') == 'content':
-                    content = chunk_data['content']
-                    assistant_response += content
-                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                yield "data: [DONE]\n\n"
                 
-                elif chunk_data.get('type') == 'error':
-                    yield f"data: {json.dumps({'type': 'error', 'content': chunk_data['content']})}\n\n"
-                    break
-                
-                elif chunk_data.get('type') == 'done':
-                    # Save assistant response to chat history
-                    chat_manager.add_message(user_id, chat_id, "assistant", assistant_response)
-                    logger.log_chat("info", f"Assistant response: {assistant_response}", user_id=user_id, chat_id=chat_id)
-                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                    break
-            
-            yield "data: [DONE]\n\n"
+            except Exception as e:
+                error_msg = f"Error in generate(): {str(e)}"
+                logger.log_backend("error", error_msg)
+                yield f"data: {json.dumps({'type': 'error', 'content': error_msg})}\n\n"
         
-        return Response(generate(), mimetype='text/event-stream')
+        # Create response with streaming headers
+        response = Response(
+            generate(),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no',  # Disable buffering in nginx
+                'Content-Encoding': 'none'  # Required for some proxies
+            }
+        )
+        
+        # Add CORS headers
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        
+        return response
     
     except Exception as e:
         logger.log_backend("error", f"Error in chat endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-@app.route('/api/chats', methods=['GET'])
-def get_chats():
-    user_id = request.args.get('user_id')
-    if not user_id:
-        return jsonify({"error": MISSING_USER_ID}), 400
+@app.route('/api/chats', methods=['GET', 'POST'])
+def handle_chats():
+    if request.method == 'POST':
+        # Handle chat creation
+        try:
+            data = request.json
+            user_id = data.get('user_id')
+            title = data.get('title', 'New Chat')
+            
+            if not user_id:
+                return jsonify({"error": MISSING_USER_ID}), 400
+                
+            # Create a new chat
+            chat_id = chat_manager.create_chat(user_id, title)
+            return jsonify({
+                "status": "success",
+                "chat_id": chat_id,
+                "title": title
+            }), 201
+            
+        except Exception as e:
+            logger.log_backend("error", f"Error creating chat: {str(e)}")
+            return jsonify({"error": str(e)}), 500
     
-    chats = chat_manager.get_user_chats(user_id)
-    return jsonify(chats)
+    else:
+        # Handle GET request for chat list
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": MISSING_USER_ID}), 400
+
+        try:
+            chats = chat_manager.get_user_chats(user_id)
+            return jsonify(chats)
+        except Exception as e:
+            logger.log_backend("error", f"Error getting chats: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
 @app.route('/api/chats/<chat_id>/title', methods=['PUT'])
 def update_chat_title(chat_id):
@@ -171,5 +255,6 @@ if __name__ == '__main__':
     os.makedirs('data', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
     
+    # Run the application with development settings
     logger.log_backend("info", "Starting AI Chat Server")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True, threaded=True)

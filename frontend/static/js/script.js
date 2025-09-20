@@ -136,8 +136,11 @@ class ChatApp {
     try {
       await this.streamAssistantResponse(message, assistantMessageElement);
     } catch (error) {
-      console.error("Error in sendMessage:", error);
-      this.showError("Failed to get response. Please try again.");
+      // Don't show error if the request was aborted intentionally
+      if (error.name !== 'AbortError') {
+        console.error("Error in sendMessage:", error);
+        this.showError("Failed to get response. Please try again.");
+      }
     } finally {
       this.isWaitingForResponse = false;
       this.toggleInputState(false);
@@ -150,6 +153,13 @@ class ChatApp {
       this.currentChatId = await this.createChat(message);
     }
 
+    // Create a new AbortController for this request
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
+    
+    // Flag to track if the request was aborted
+    let wasAborted = false;
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -157,8 +167,9 @@ class ChatApp {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
           "Cache-Control": "no-cache",
-          Connection: "keep-alive",
+          Connection: "keep-alive"
         },
+        signal, // Pass the signal to the fetch request
         body: JSON.stringify({
           user_id: this.userId,
           chat_id: this.currentChatId,
@@ -167,7 +178,8 @@ class ChatApp {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
 
       if (!response.body) {
@@ -189,6 +201,15 @@ class ChatApp {
       const loadingIndicator = document.createElement("div");
       loadingIndicator.className = "typing-indicator";
       loadingIndicator.innerHTML = "<span></span><span></span><span></span>";
+      
+      // Set up abort handler
+      signal.addEventListener('abort', () => {
+        wasAborted = true;
+        // Remove loading indicator
+        if (loadingIndicator.parentNode) {
+          loadingIndicator.remove();
+        }
+      });
       contentContainer.appendChild(loadingIndicator);
 
       const processChunk = async () => {
@@ -212,27 +233,37 @@ class ChatApp {
 
             // Process the streamed data
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n\n");
-            buffer = lines.pop() || "";
-
-            for (const line of lines) {
-              if (line.trim() === "") continue;
+            
+            // Split by double newlines to handle multiple events
+            const events = buffer.split('\n\n');
+            buffer = events.pop() || ''; // Keep incomplete event in buffer
+            
+            for (const event of events) {
+              if (!event.trim()) continue;
+              
+              // Extract data from the event
+              const lines = event.split('\n');
+              let eventData = '';
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.substring(6).trim();
+                  if (data === '[DONE]') {
+                    isProcessing = false;
+                    this.isWaitingForResponse = false;
+                    if (loadingIndicator.parentNode === contentContainer) {
+                      contentContainer.removeChild(loadingIndicator);
+                    }
+                    return;
+                  }
+                  eventData = data;
+                }
+              }
+              
+              if (!eventData) continue;
 
               try {
-                let data = line.replace(/^data: /, "").trim();
-
-                // Handle [DONE] message
-                if (data === "[DONE]") {
-                  isProcessing = false;
-                  this.isWaitingForResponse = false;
-                  if (loadingIndicator.parentNode === contentContainer) {
-                    contentContainer.removeChild(loadingIndicator);
-                  }
-                  return;
-                }
-
-                // Parse the JSON data
-                const parsedData = JSON.parse(data);
+                const parsedData = JSON.parse(eventData);
 
                 // Handle error response
                 if (parsedData.error) {
@@ -250,8 +281,18 @@ class ChatApp {
                   contentContainer.innerHTML = formattedMessage;
                   this.scrollToBottom();
                 }
+                
+                // Handle done event
+                if (parsedData.type === 'done') {
+                  isProcessing = false;
+                  this.isWaitingForResponse = false;
+                  if (loadingIndicator.parentNode === contentContainer) {
+                    contentContainer.removeChild(loadingIndicator);
+                  }
+                  return;
+                }
               } catch (e) {
-                console.error("Error processing chunk:", e);
+                console.error("Error parsing event data:", e, "Data:", eventData);
               }
             }
 
@@ -259,6 +300,11 @@ class ChatApp {
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
         } catch (error) {
+          // Don't show error if the request was aborted intentionally
+          if (error.name === 'AbortError') {
+            console.log('Request was aborted by user');
+            return;
+          }
           console.error("Error in processChunk:", error);
           contentContainer.innerHTML =
             '<div class="error-message">Error receiving response. Please try again.</div>';
@@ -268,8 +314,18 @@ class ChatApp {
 
       await processChunk();
     } catch (error) {
+      // Don't show error if the request was aborted intentionally
+      if (error.name === 'AbortError') {
+        console.log('Streaming was aborted by user');
+        return;
+      }
       console.error("Error in streamAssistantResponse:", error);
       throw error;
+    } finally {
+      // Clean up the abort controller when done
+      if (this.abortController) {
+        this.abortController = null;
+      }
     }
   }
 
@@ -382,31 +438,37 @@ class ChatApp {
 
   async createChat(firstMessage) {
     try {
-      const response = await fetch("/api/chat", {
+      // First, create a new chat with a temporary ID
+      const tempChatId = `new-chat-${Date.now()}`;
+      this.currentChatId = tempChatId;
+      
+      // Create the chat in the backend
+      const response = await fetch("/api/chats", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json", // Explicitly ask for JSON response
         },
         body: JSON.stringify({
           user_id: this.userId,
-          message: firstMessage,
+          title: firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : ''),
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create chat: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`Failed to create chat: ${response.status} - ${errorText}`);
+        return tempChatId; // Return the temp ID if creation fails
       }
 
       const data = await response.json();
-
+      
       // If we get a chat_id in the response, use it
       if (data?.chat_id) {
+        this.currentChatId = data.chat_id;
         return data.chat_id;
       }
 
-      // Otherwise, generate a new chat ID
-      return `new-chat-${Date.now()}`;
+      return tempChatId;
     } catch (error) {
       console.error("Error creating chat:", error);
       // Generate a fallback chat ID if there's an error
@@ -904,12 +966,31 @@ class ChatApp {
   }
 
   stopGeneration() {
+    // Only proceed if we have an active request and we're not already aborted
     if (this.abortController) {
-      this.abortController.abort();
-      this.abortController = null;
+      try {
+        // Store a reference to the current controller
+        const controller = this.abortController;
+        this.abortController = null; // Clear it first to prevent multiple abort calls
+        
+        // Abort the request
+        controller.abort();
+        
+        // Show a message indicating the generation was stopped
+        const messagesContainer = document.getElementById("chat-messages");
+        const stopMessage = document.createElement('div');
+        stopMessage.className = 'info-message';
+        stopMessage.textContent = 'Response generation was stopped.';
+        messagesContainer.appendChild(stopMessage);
+        this.scrollToBottom();
+      } catch (error) {
+        console.error('Error stopping generation:', error);
+      } finally {
+        this.abortController = null;
+        this.isWaitingForResponse = false;
+        this.toggleInputState(false);
+      }
     }
-    this.isWaitingForResponse = false;
-    this.toggleInputState(false);
   }
 
   async renameChat(chatId, titleElement) {
