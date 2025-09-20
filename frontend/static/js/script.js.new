@@ -1,0 +1,260 @@
+class ChatApp {
+  constructor() {
+    this.userId = this.getUserId();
+    this.currentChatId = null;
+    this.isWaitingForResponse = false;
+    this.abortController = null;
+    this.chatTitleMap = {}; // To store chat titles
+    this.initializeEventListeners();
+    this.initializeApp();
+  }
+
+  async initializeApp() {
+    try {
+      await Promise.all([
+        this.loadChatHistory(),
+        this.loadPromptCategories(),
+        this.loadProfile(),
+      ]);
+    } catch (error) {
+      console.error("Error initializing app:", error);
+    }
+  }
+
+  getUserId() {
+    let userId = localStorage.getItem("userId");
+    if (!userId) {
+      userId = "user_" + Math.random().toString(36).slice(2, 11);
+      localStorage.setItem("userId", userId);
+    }
+    return userId;
+  }
+
+  initializeEventListeners() {
+    // Send message
+    document
+      .getElementById("send-btn")
+      .addEventListener("click", () => this.sendMessage());
+    
+    document
+      .getElementById("message-input")
+      .addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.sendMessage();
+        }
+      });
+
+    // New chat
+    document
+      .getElementById("new-chat-btn")
+      .addEventListener("click", () => this.newChat());
+
+    // Delete chat
+    document
+      .getElementById("delete-chat")
+      .addEventListener("click", () => this.deleteChat());
+
+    // Delete all chats
+    document
+      .getElementById("delete-all-chats")
+      .addEventListener("click", () => this.deleteAllChats());
+
+    // Profile modal
+    document
+      .getElementById("profile-btn")
+      .addEventListener("click", () => this.openProfileModal());
+    
+    document
+      .querySelector(".close")
+      .addEventListener("click", () => this.closeProfileModal());
+    
+    window.addEventListener("click", (e) => {
+      if (e.target === document.getElementById("profile-modal")) {
+        this.closeProfileModal();
+      }
+    });
+
+    // Profile form
+    document.getElementById("profile-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.saveProfile();
+    });
+
+    // Stop generation button
+    document
+      .getElementById("stop-btn")
+      .addEventListener("click", () => this.stopGeneration());
+  }
+
+  async loadChatHistory() {
+    try {
+      const response = await fetch(`/api/chats?user_id=${this.userId}`);
+      if (!response.ok) throw new Error("Failed to load chat history");
+
+      const chats = await response.json();
+      const chatList = document.getElementById("chat-list");
+      if (!chatList) return;
+
+      // Store current scroll position
+      const scrollPosition = chatList.scrollTop;
+
+      // Create document fragment for better performance
+      const fragment = document.createDocumentFragment();
+
+      // Clear existing content
+      chatList.innerHTML = "";
+
+      // Add chat history items
+      const historyItems = document.createElement("div");
+      historyItems.className = "chat-history-items";
+
+      for (const [chatId, chatData] of Object.entries(chats)) {
+        const chatItem = document.createElement("div");
+        chatItem.className = `chat-item ${this.currentChatId === chatId ? "active" : ""}`;
+        chatItem.dataset.chatId = chatId;
+        
+        // Add hover effects
+        chatItem.addEventListener("mouseenter", () => {
+          chatItem.classList.add("hovered");
+        });
+        chatItem.addEventListener("mouseleave", () => {
+          chatItem.classList.remove("hovered");
+        });
+        
+        const chatContent = document.createElement("div");
+        chatContent.className = "chat-content";
+        
+        // Add click handler for the main content
+        chatContent.onclick = (e) => {
+          if (e.target.closest('.chat-actions')) return;
+          this.loadChat(chatId);
+        };
+
+        // Chat icon
+        const icon = document.createElement("i");
+        icon.className = "fas fa-comment-alt";
+
+        // Chat title
+        const title = document.createElement("span");
+        title.className = "chat-title";
+        title.textContent = chatData.title || "Untitled Chat";
+
+        // Three-dot menu
+        const menuBtn = document.createElement("button");
+        menuBtn.className = "chat-menu-btn";
+        menuBtn.innerHTML = '<i class="fas fa-ellipsis-v"></i>';
+        menuBtn.onclick = (e) => {
+          e.stopPropagation();
+          // Close other open menus
+          document.querySelectorAll('.chat-dropdown').forEach(dropdown => {
+            if (dropdown !== menuBtn.nextElementSibling) {
+              dropdown.classList.remove('show');
+            }
+          });
+          menuBtn.nextElementSibling.classList.toggle('show');
+        };
+
+        // Dropdown menu
+        const dropdown = document.createElement("div");
+        dropdown.className = "chat-dropdown";
+        dropdown.innerHTML = `
+          <button class="dropdown-item" data-action="rename">
+            <i class="fas fa-pen"></i> Rename
+          </button>
+          <button class="dropdown-item" data-action="delete">
+            <i class="fas fa-trash"></i> Delete
+          </button>
+        `;
+
+        // Handle dropdown actions
+        dropdown.querySelectorAll('.dropdown-item').forEach(btn => {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            if (action === 'delete') {
+              if (confirm('Are you sure you want to delete this chat?')) {
+                this.deleteChat(chatId);
+              }
+            } else if (action === 'rename') {
+              this.renameChat(chatId, title);
+            }
+            dropdown.classList.remove('show');
+          };
+        });
+
+        // Close dropdown when clicking outside
+        const closeDropdown = (e) => {
+          if (!chatItem.contains(e.target)) {
+            dropdown.classList.remove('show');
+          }
+        };
+        document.addEventListener('click', closeDropdown);
+
+        // Assemble the chat item
+        chatContent.appendChild(icon);
+        chatContent.appendChild(title);
+        
+        // Create actions container
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "chat-actions";
+        actionsDiv.appendChild(menuBtn);
+        actionsDiv.appendChild(dropdown);
+        
+        chatItem.appendChild(chatContent);
+        chatItem.appendChild(actionsDiv);
+        historyItems.appendChild(chatItem);
+      }
+
+      // Add all items to the fragment
+      fragment.appendChild(historyItems);
+      chatList.appendChild(fragment);
+
+      // Restore scroll position
+      chatList.scrollTop = scrollPosition;
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      this.showError("Failed to load chat history. Please try again.");
+    }
+  }
+
+  // Add other methods here (sendMessage, loadChat, deleteChat, etc.)
+  // ...
+
+  // Example of other methods that should be implemented:
+  async sendMessage() {
+    // Implementation for sending messages
+  }
+
+  async loadChat(chatId) {
+    // Implementation for loading a specific chat
+  }
+
+  async deleteChat(chatId) {
+    // Implementation for deleting a chat
+  }
+
+  async renameChat(chatId, titleElement) {
+    // Implementation for renaming a chat
+  }
+
+  showError(message) {
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "error-message";
+    errorDiv.textContent = message;
+
+    const messagesContainer = document.getElementById("chat-messages");
+    messagesContainer.appendChild(errorDiv);
+    this.scrollToBottom();
+  }
+
+  scrollToBottom() {
+    const messagesContainer = document.getElementById("chat-messages");
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}
+
+// Initialize the chat app when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+  window.chatApp = new ChatApp();
+});

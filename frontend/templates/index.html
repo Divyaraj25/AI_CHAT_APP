@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chat Assistant</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2><i class="fas fa-robot"></i> AI Assistant</h2>
+          <button id="new-chat-btn" class="new-chat-btn">
+            <i class="fas fa-plus"></i> New Chat
+          </button>
+        </div>
+
+        <div class="chat-history">
+          <h3>Chat History</h3>
+          <div id="chat-list" class="chat-list">
+            <!-- Chat items will be populated here -->
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button id="delete-all-chats" class="danger-btn">
+            <i class="fas fa-trash"></i> Delete All
+          </button>
+          <button id="profile-btn"><i class="fas fa-user"></i> Profile</button>
+        </div>
+      </div>
+
+      <!-- Main Chat Area -->
+      <div class="main-content">
+        <div class="chat-header">
+          <h3 id="current-chat-title">New Chat</h3>
+          <div class="chat-actions">
+            <button
+              id="delete-chat"
+              class="danger-btn"
+              style="padding: 8px 16px"
+            >
+              <i class="fas fa-trash"></i> Delete Chat
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-messages" class="chat-messages">
+          <div class="welcome-message">
+            <h2>Welcome to AI Assistant!</h2>
+            <p>Start a conversation or choose from suggested prompts below</p>
+            <div id="prompt-categories" class="prompt-categories">
+              <!-- Prompt categories will be populated here -->
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-container">
+          <div id="prompt-suggestions" class="prompt-suggestions">
+            <!-- Prompt suggestions will be populated here -->
+          </div>
+          <div class="input-wrapper">
+            <input
+              type="text"
+              id="message-input"
+              placeholder="Type your message here..."
+              autocomplete="off"
+            />
+            <button id="send-btn">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+            <button id="stop-btn">
+              <i class="fas fa-stop"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>User Profile</h3>
+          <span class="close">&times;</span>
+        </div>
+        <form id="profile-form" class="modal-form">
+          <div class="modal-body">
+            <div class="card-container">
+              <!-- Personal Info Card -->
+              <div class="form-card">
+                <div class="card-header">
+                  <i class="fas fa-user-circle"></i>
+                  <h4>Personal Information</h4>
+                </div>
+                <div class="card-content">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="name">Full Name</label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        placeholder="Your full name"
+                        required
+                      />
+                    </div>
+                    <div class="form-group">
+                      <label for="age">Age</label>
+                      <input
+                        type="number"
+                        id="age"
+                        name="age"
+                        placeholder="Your age"
+                        min="1"
+                        max="120"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Health & Fitness Card -->
+              <div class="form-card">
+                <div class="card-header">
+                  <i class="fas fa-dumbbell"></i>
+                  <h4>Health & Fitness</h4>
+                </div>
+                <div class="card-content">
+                  <div class="form-group">
+                    <label for="dietary_preferences">Dietary Preferences</label>
+                    <select
+                      id="dietary_preferences"
+                      name="dietary_preferences"
+                      required
+                    >
+                      <option value="">Select an option</option>
+                      <option value="Vegetarian">Vegetarian</option>
+                      <option value="Vegan">Vegan</option>
+                      <option value="Pescatarian">Pescatarian</option>
+                      <option value="Omnivore">Omnivore</option>
+                      <option value="Keto">Keto</option>
+                      <option value="Gluten-Free">Gluten-Free</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="fitness_level">Fitness Level</label>
+                    <select id="fitness_level" name="fitness_level" required>
+                      <option value="">Select your fitness level</option>
+                      <option value="Beginner">Beginner</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Advanced">Advanced</option>
+                      <option value="Athlete">Athlete</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Goals & Activities Card -->
+              <div class="form-card">
+                <div class="card-header">
+                  <i class="fas fa-bullseye"></i>
+                  <h4>Goals & Activities</h4>
+                </div>
+                <div class="card-content">
+                  <div class="form-group">
+                    <label for="goals">Your Goals <small>(comma-separated)</small></label>
+                    <textarea
+                      id="goals"
+                      name="goals"
+                      placeholder="e.g., Weight Gain, Muscle Building, Improve Flexibility"
+                      rows="2"
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="interests">Daily Activities <small>(one per line)</small></label>
+                    <textarea
+                      id="interests"
+                      name="interests"
+                      placeholder="e.g., Exercising daily 45 min, Daily Yoga 10 min"
+                      rows="3"
+                      required
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI Settings Card -->
+              <div class="form-card">
+                <div class="card-header">
+                  <i class="fas fa-robot"></i>
+                  <h4>AI Assistant Settings</h4>
+                </div>
+                <div class="card-content">
+                  <div class="form-group">
+                    <label for="ai_tone">Assistant's Tone</label>
+                    <select
+                      id="ai_tone"
+                      name="ai_tone"
+                      class="tone-selector"
+                      required
+                    >
+                      <option value="professional">🤖 Professional</option>
+                      <option value="friendly">😊 Friendly</option>
+                      <option value="casual">😎 Casual</option>
+                      <option value="humorous">😂 Humorous</option>
+                      <option value="motivational">💪 Motivational</option>
+                      <option value="empathetic">🤗 Empathetic</option>
+                      <option value="concise">📝 Concise</option>
+                      <option value="detailed">🔍 Detailed</option>
+                    </select>
+                    <p class="tone-hint">
+                      Select how you'd like your AI assistant to respond
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">
+              <i class="fas fa-save"></i> Save Profile
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="app.closeProfileModal()"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>
