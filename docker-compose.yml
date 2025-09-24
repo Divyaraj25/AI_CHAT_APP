@@ -14,11 +14,10 @@ services:
     environment:
       - FLASK_ENV=production
       - PYTHONPATH=/app
-      - OLLAMA_HOST=host.docker.internal:11434  # Updated to use host.docker.internal
+      - OLLAMA_HOST=host.docker.internal:11434
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
-  app_data:
   python_packages:

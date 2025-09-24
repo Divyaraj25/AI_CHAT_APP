@@ -40,6 +40,7 @@
 
 - Python 3.8+
 - [Ollama](https://ollama.ai/) (for local AI processing)
+- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) account (for data storage)
 - Node.js 14+ (for frontend development)
 - Docker (optional, for containerized deployment)
 
@@ -58,7 +59,23 @@ ollama pull llama3.1:8b
 ollama serve
 ```
 
-### 2. Set Up the Application
+### 2. Set Up MongoDB Atlas
+
+1. Create a MongoDB Atlas account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster
+3. Configure network access to allow connections from your application
+4. Create a database user with appropriate permissions
+5. Get your connection string from the Atlas dashboard
+
+### 3. Configure MongoDB Connection
+
+Update the [.env](file:///d:/my%20projects/YOUTUBE%20PROJECTS%20AND%20TUTORIALS/PYTHON%20RELATED%20PROJECTS/209025_new_ai_personal_assistant/ai_chat_app/.env) file with your MongoDB Atlas connection string:
+
+```env
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/ai_chat_app?retryWrites=true&w=majority
+```
+
+### 4. Set Up the Application
 
 #### Option A: Python Virtual Environment (Recommended for Development)
 
@@ -77,8 +94,11 @@ source venv/bin/activate
 # Install Python dependencies
 pip install -r backend/requirements.txt
 
-# Start the Flask backend
+# Initialize MongoDB with existing data (if any)
 cd backend
+python init_mongo.py
+
+# Start the Flask backend
 python app.py
 ```
 
@@ -88,11 +108,12 @@ python app.py
 # Navigate to the project directory
 cd ai_chat_app
 
-# Start the application (it will connect to your local Ollama instance)
+# Update the .env file with your MongoDB Atlas connection string
+# Then start the application (it will connect to your MongoDB Atlas instance)
 docker-compose up -d --build
 ```
 
-### 3. Access the Application
+### 5. Access the Application
 
 Open your browser and navigate to `http://localhost:5000`
 
@@ -109,12 +130,35 @@ python backend/app.py
 docker-compose run -e OLLAMA_URL=http://host.docker.internal:11434 ai-chat-app
 ```
 
+## 🔄 MongoDB Configuration
+
+The application uses MongoDB Atlas for data storage. You need to configure the connection string in the [.env](file:///d:/my%20projects/YOUTUBE%20PROJECTS%20AND%20TUTORIALS/PYTHON%20RELATED%20PROJECTS/209025_new_ai_personal_assistant/ai_chat_app/.env) file:
+
+```env
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/ai_chat_app?retryWrites=true&w=majority
+```
+
+To initialize MongoDB with existing JSON data from the `data/` directory, run:
+
+```bash
+cd backend
+python init_mongo.py
+```
+
+This script will:
+1. Connect to your MongoDB Atlas instance
+2. Create the `ai_chat_app` database
+3. Create collections for chat history, profiles, and prompts
+4. Migrate existing data from JSON files to MongoDB (if available)
+5. Create empty collections if no JSON data exists
+
 ## 🐳 Docker Compose Configuration
 
 The Docker setup includes:
 
 - The AI Chat Application (Flask backend + frontend)
 - Automatic connection to your local Ollama instance
+- Connection to your MongoDB Atlas instance
 - Persistent storage for chat history and logs
 
 To rebuild the containers after making changes:
@@ -166,8 +210,10 @@ ai-chat-app/
 │   ├── app.py
 │   ├── chat_manager.py
 │   ├── profile_manager.py
+│   ├── db_manager.py
+│   ├── init_mongo.py
 │   ├── logger.py
-│   ├── prompts.py
+│   ├── prompt_manager.py
 │   └── requirements.txt
 ├── frontend/         # HTML, CSS, and JavaScript files
 │   ├── static/
@@ -188,6 +234,7 @@ ai-chat-app/
 │   └── chat.log
 ├── docker-compose.yml
 ├── Dockerfile
+├── .env
 ├── .gitignore
 ├── setup.py
 └── README.md
@@ -198,124 +245,3 @@ ai-chat-app/
 ### Logging
 
 The application maintains detailed logs in the `logs/` directory:
-
-- **backend.log:** Server-side events and errors
-- **frontend.log:** Client-side interactions
-- **chat.log:** All chat messages and interactions
-
----
-
-### API Endpoints
-
-- `GET /` - Serve the main interface
-- `POST /api/chat` - Send a message and receive AI response
-- `GET /api/chats` - Retrieve chat history
-- `DELETE /api/chats/<chat_id>` - Delete a specific chat
-- `DELETE /api/chats` - Delete all chats for a user
-- `GET|POST|PUT /api/profile` - Manage user profiles
-- `GET /api/prompts` - Retrieve prompt suggestions
-- `GET /api/prompts/categories` - Get all available categories
-
----
-
-### Project Valuation
-
-This AI Chat Assistant represents a significant value proposition in the growing market of personalized AI assistants. Based on current market trends and comparable products, the valuation ranges are:
-
-- **Tier 1: Basic Version (Current Implementation)**
-  - Estimated Value: $5,000 - $15,000
-  - Features: Local deployment, basic chat functionality, profile management
-- **Tier 2: Enhanced Version**
-  - Estimated Value: $20,000 - $50,000
-  - Additional Features: Multi-user support, cloud synchronization, mobile app, premium AI models
-- **Tier 3: Enterprise Version**
-  - Estimated Value: $75,000 - $150,000+
-  - Additional Features: Custom AI training, API access, white-label solutions, advanced analytics
-
----
-
-### Market Potential
-
-The global chatbot market is expected to reach $10.5 billion by 2026, with personalized AI assistants representing a growing segment. This project addresses multiple verticals (health, education, productivity) making it highly valuable.
-
----
-
-### Contributing
-
-1.  Fork the repository
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`)
-3.  Commit your changes (`git commit -m 'Add amazing feature'`)
-4.  Push to the branch (`git push origin feature/amazing-feature`)
-5.  Open a Pull Request
-
----
-
-### License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-### Support
-
-For support, please open an issue in the GitHub repository or contact the development team.
-
----
-
-### Acknowledgments
-
-- Ollama for providing the AI backend
-- Flask community for the excellent web framework
-- Font Awesome for the icons
-- All contributors who help improve this project
-
----
-
-### How This Project Helps the World
-
-This AI Chat Assistant has the potential to positively impact users worldwide by:
-
-- **Democratizing AI Access:** Provides free, local AI assistance without requiring expensive subscriptions.
-- **Personal Development:** Helps users improve their daily lives through personalized advice on fitness, nutrition, and productivity.
-- **Educational Support:** Assists students in exam preparation, especially for competitive exams like GATE.
-- **Health & Wellness:** Promotes healthy living through meal planning and fitness guidance.
-- **Privacy-Focused:** All data remains locally stored, ensuring user privacy and security.
-- **Open Source:** Allows developers to contribute and customize the assistant for specific needs.
-
-The application is particularly valuable in regions where access to professional trainers, nutritionists, or tutors may be limited or expensive, making expert guidance more accessible to everyone.
-
----
-
-## 👨‍💻 Author
-
-- **Name:** Divyaraj Makwana
-- **GitHub:** [@divyaraj25](https://github.com/divyaraj25)
-- **Email:** divyaraj.makwana9425@gmail.com
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2025 Divyarajsinh Zala
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```

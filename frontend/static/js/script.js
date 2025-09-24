@@ -347,6 +347,8 @@ class ChatApp {
       .replace(/^### (.*$)/gm, "<h3>$1</h3>")
       .replace(/^## (.*$)/gm, "<h2>$1</h2>")
       .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+      // Add link formatting with markdown style [text](url)
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
       .replace(/\n/g, "<br>");
 
     // Handle lists
@@ -396,6 +398,31 @@ class ChatApp {
     timeSpan.className = "message-time";
     timeSpan.textContent = new Date().toLocaleTimeString();
 
+    // Create copy button
+    const copyButton = document.createElement("button");
+    copyButton.className = "copy-btn";
+    copyButton.innerHTML = '<i class="fas fa-copy"></i>';
+    copyButton.setAttribute("aria-label", "Copy message");
+    copyButton.title = "Copy to clipboard";
+
+    // Add click event to copy button
+    copyButton.addEventListener("click", () => {
+      navigator.clipboard.writeText(content).then(() => {
+        // Show visual feedback
+        const originalIcon = copyButton.innerHTML;
+        copyButton.innerHTML = '<i class="fas fa-check"></i>';
+        copyButton.style.color = "var(--success-color)";
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+          copyButton.innerHTML = originalIcon;
+          copyButton.style.color = "";
+        }, 2000);
+      }).catch(err => {
+        console.error("Failed to copy text: ", err);
+      });
+    });
+
     const contentDiv = document.createElement("div");
     contentDiv.className = "message-content";
 
@@ -406,6 +433,7 @@ class ChatApp {
     }
 
     headerDiv.appendChild(timeSpan);
+    headerDiv.appendChild(copyButton);
     messageDiv.appendChild(headerDiv);
     messageDiv.appendChild(contentDiv);
 
@@ -539,7 +567,7 @@ class ChatApp {
           </button>
         `;
 
-        // Toggle dropdown on menu button click
+        // Toggle dropdown on menu button click only
         menuBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           const isOpen = dropdown.classList.contains("show");
@@ -594,7 +622,7 @@ class ChatApp {
         
         // Close dropdown when clicking outside
         document.addEventListener("click", (e) => {
-          if (!chatItem.contains(e.target)) {
+          if (!chatItem.contains(e.target) && !e.target.closest(".chat-menu-btn")) {
             dropdown.classList.remove("show");
             menuBtn.setAttribute("aria-expanded", "false");
           }

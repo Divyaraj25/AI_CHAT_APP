@@ -190,7 +190,6 @@ body {
   transform: translateY(5px);
 }
 
-.chat-item:hover .chat-dropdown,
 .chat-dropdown.show {
   opacity: 1;
   visibility: visible;
@@ -246,6 +245,8 @@ body {
 .danger-btn {
   background: var(--error-color);
   color: white;
+  border: none;
+  border-radius: 10px;
 }
 
 .danger-btn:hover {
@@ -326,6 +327,25 @@ body {
   opacity: 0.8;
 }
 
+.copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+}
+
+.copy-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+}
+
 .message-time {
   font-size: 0.75em;
 }
@@ -393,6 +413,17 @@ body {
 
 .assistant-message-content li {
   margin-bottom: 0.25em;
+}
+
+/* Link styling for formatted messages */
+.assistant-message-content a {
+  color: var(--primary-color);
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.assistant-message-content a:hover {
+  color: var(--secondary-color);
 }
 
 .typing-indicator {

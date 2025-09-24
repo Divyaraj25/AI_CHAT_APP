@@ -1,76 +1,32 @@
 import json
-import os
 import uuid
 from datetime import datetime
 import requests
+from db_manager import DatabaseManager
 
 class ChatManager:
-    def __init__(self, history_file="../data/chat_history.json", ollama_url=None):
-        self.history_file = history_file
-        self.ollama_url = ollama_url or f"http://{os.getenv('OLLAMA_HOST', 'localhost:11434')}"
-        self.chat_history = self.load_history()
+    def __init__(self, ollama_url=None):
+        self.db_manager = DatabaseManager()
+        self.ollama_url = ollama_url or f"http://localhost:11434"
         print(f"Connecting to Ollama at: {self.ollama_url}")  # For debugging
     
-    def load_history(self):
-        os.makedirs(os.path.dirname(self.history_file), exist_ok=True)
-        try:
-            with open(self.history_file, 'r') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return {}
-    
-    def save_history(self):
-        with open(self.history_file, 'w') as f:
-            json.dump(self.chat_history, f, indent=2)
-    
     def get_user_chats(self, user_id):
-        return self.chat_history.get(user_id, {})
+        return self.db_manager.get_user_chats(user_id)
     
     def create_chat(self, user_id, title="New Chat"):
-        chat_id = str(uuid.uuid4())
-        if user_id not in self.chat_history:
-            self.chat_history[user_id] = {}
-        
-        self.chat_history[user_id][chat_id] = {
-            "title": title,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "messages": []
-        }
-        self.save_history()
-        return chat_id
+        return self.db_manager.create_chat(user_id, title)
     
     def add_message(self, user_id, chat_id, role, content):
-        if user_id in self.chat_history and chat_id in self.chat_history[user_id]:
-            message = {
-                "role": role,
-                "content": content,
-                "timestamp": datetime.now().isoformat()
-            }
-            self.chat_history[user_id][chat_id]["messages"].append(message)
-            self.chat_history[user_id][chat_id]["updated_at"] = datetime.now().isoformat()
-            self.save_history()
-            return message
-        return None
+        return self.db_manager.add_message(user_id, chat_id, role, content)
     
     def get_chat_messages(self, user_id, chat_id):
-        if user_id in self.chat_history and chat_id in self.chat_history[user_id]:
-            return self.chat_history[user_id][chat_id]["messages"]
-        return []
+        return self.db_manager.get_chat_messages(user_id, chat_id)
     
     def delete_chat(self, user_id, chat_id):
-        if user_id in self.chat_history and chat_id in self.chat_history[user_id]:
-            del self.chat_history[user_id][chat_id]
-            self.save_history()
-            return True
-        return False
+        return self.db_manager.delete_chat(user_id, chat_id)
     
     def delete_all_chats(self, user_id):
-        if user_id in self.chat_history:
-            self.chat_history[user_id] = {}
-            self.save_history()
-            return True
-        return False
+        return self.db_manager.delete_all_chats(user_id)
         
     def update_chat_title(self, user_id, chat_id, new_title):
         """Update the title of a chat.
@@ -83,17 +39,7 @@ class ChatManager:
         Returns:
             bool: True if update was successful, False otherwise
         """
-        if (user_id in self.chat_history and 
-            chat_id in self.chat_history[user_id] and 
-            new_title and 
-            new_title.strip()):
-            
-            self.chat_history[user_id][chat_id]["title"] = new_title.strip()
-            self.chat_history[user_id][chat_id]["updated_at"] = datetime.now().isoformat()
-            self.save_history()
-            return True
-            
-        return False
+        return self.db_manager.update_chat_title(user_id, chat_id, new_title)
     
     def generate_title(self, user_message):
         if len(user_message) > 30:

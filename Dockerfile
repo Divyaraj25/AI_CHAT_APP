@@ -26,6 +26,8 @@ RUN pip install --no-cache-dir --retries 5 -r requirements.txt
 # Copy application code
 COPY backend/ .
 COPY frontend/ ../frontend/
+COPY data/ ../data/
+COPY .env .
 
 # Create directories for data and logs
 RUN mkdir -p /app/data /app/logs
