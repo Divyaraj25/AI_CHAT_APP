@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Chat Assistant</title>
+    <title>NexusAI - Your Personal Assistant</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
@@ -18,11 +18,23 @@
     />
   </head>
   <body>
+    <!-- Mobile menu toggle button -->
+    <button class="menu-toggle" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Profile icon in top right -->
+    <div class="profile-icon" id="profileIcon">
+      <i class="fas fa-user"></i>
+    </div>
+
     <div class="container">
       <!-- Sidebar -->
-      <div class="sidebar">
+      <div class="sidebar" id="sidebar">
+        <!-- Overlay for mobile -->
+        <div class="overlay" id="overlay"></div>
         <div class="sidebar-header">
-          <h2><i class="fas fa-robot"></i> AI Assistant</h2>
+          <h2><i class="fas fa-robot"></i> NexusAI</h2>
           <button id="new-chat-btn" class="new-chat-btn">
             <i class="fas fa-plus"></i> New Chat
           </button>
@@ -39,28 +51,33 @@
           <button id="delete-all-chats" class="danger-btn">
             <i class="fas fa-trash"></i> Delete All
           </button>
-          <button id="profile-btn"><i class="fas fa-user"></i> Profile</button>
         </div>
       </div>
 
       <!-- Main Chat Area -->
       <div class="main-content">
         <div class="chat-header">
-          <h3 id="current-chat-title">New Chat</h3>
-          <div class="chat-actions">
-            <button
-              id="delete-chat"
-              class="danger-btn"
-              style="padding: 8px 16px"
+          <div class="chat-header-content">
+            <h3
+              id="current-chat-title"
+              style="
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+              "
             >
-              <i class="fas fa-trash"></i> Delete Chat
-            </button>
+              New Chat
+            </h3>
+            <div class="chat-actions">
+              <!-- Additional actions can be added here if needed -->
+            </div>
           </div>
         </div>
 
         <div id="chat-messages" class="chat-messages">
           <div class="welcome-message">
-            <h2>Welcome to AI Assistant!</h2>
+            <h2>Welcome to NexusAI!</h2>
             <p>Start a conversation or choose from suggested prompts below</p>
             <div id="prompt-categories" class="prompt-categories">
               <!-- Prompt categories will be populated here -->
@@ -180,7 +197,9 @@
                 </div>
                 <div class="card-content">
                   <div class="form-group">
-                    <label for="goals">Your Goals <small>(comma-separated)</small></label>
+                    <label for="goals"
+                      >Your Goals <small>(comma-separated)</small></label
+                    >
                     <textarea
                       id="goals"
                       name="goals"
@@ -191,7 +210,9 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="interests">Daily Activities <small>(one per line)</small></label>
+                    <label for="interests"
+                      >Daily Activities <small>(one per line)</small></label
+                    >
                     <textarea
                       id="interests"
                       name="interests"

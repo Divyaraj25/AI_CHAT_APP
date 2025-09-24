@@ -51,9 +51,9 @@ class ChatApp {
       .addEventListener("click", () => this.newChat());
 
     // Delete chat
-    document
-      .getElementById("delete-chat")
-      .addEventListener("click", () => this.deleteChat());
+    // document
+    //   .getElementById("delete-chat")
+    //   .addEventListener("click", () => this.deleteChat());
 
     // Delete all chats
     document
@@ -62,9 +62,6 @@ class ChatApp {
 
     // Profile modal
     const profileModal = document.getElementById("profile-modal");
-    document
-      .getElementById("profile-btn")
-      .addEventListener("click", () => this.openProfileModal());
 
     document
       .querySelector(".close")
@@ -86,6 +83,52 @@ class ChatApp {
     document
       .getElementById("stop-btn")
       .addEventListener("click", () => this.stopGeneration());
+
+    // Mobile menu toggle
+    const menuToggle = document.getElementById("menuToggle");
+    menuToggle.addEventListener("click", () => this.toggleSidebar());
+
+    // Profile icon click
+    const profileIcon = document.getElementById('profileIcon');
+    if (profileIcon) {
+      profileIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openProfileModal();
+      });
+      
+      // Make profile icon keyboard accessible
+      profileIcon.setAttribute('role', 'button');
+      profileIcon.setAttribute('tabindex', '0');
+      profileIcon.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.openProfileModal();
+        }
+      });
+    }
+
+    // Close modal when clicking the X
+    const closeModal = document.getElementsByClassName("close")[0];
+    closeModal.addEventListener("click", () => {
+      profileModal.style.display = "none";
+      document.body.style.overflow = "";
+    });
+
+    // Close modal when clicking outside or pressing Escape
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('profile-modal');
+      if (e.target === modal) {
+        this.closeProfileModal();
+      }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('profile-modal');
+      if (e.key === 'Escape' && modal.style.display === 'block') {
+        this.closeProfileModal();
+      }
+    });
   }
 
   toggleInputState(isDisabled) {
@@ -137,7 +180,7 @@ class ChatApp {
       await this.streamAssistantResponse(message, assistantMessageElement);
     } catch (error) {
       // Don't show error if the request was aborted intentionally
-      if (error.name !== 'AbortError') {
+      if (error.name !== "AbortError") {
         console.error("Error in sendMessage:", error);
         this.showError("Failed to get response. Please try again.");
       }
@@ -156,7 +199,7 @@ class ChatApp {
     // Create a new AbortController for this request
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
-    
+
     // Flag to track if the request was aborted
     let wasAborted = false;
 
@@ -167,7 +210,7 @@ class ChatApp {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
           "Cache-Control": "no-cache",
-          Connection: "keep-alive"
+          Connection: "keep-alive",
         },
         signal, // Pass the signal to the fetch request
         body: JSON.stringify({
@@ -179,7 +222,9 @@ class ChatApp {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+        throw new Error(
+          `HTTP error! status: ${response.status}, body: ${errorText}`
+        );
       }
 
       if (!response.body) {
@@ -201,9 +246,9 @@ class ChatApp {
       const loadingIndicator = document.createElement("div");
       loadingIndicator.className = "typing-indicator";
       loadingIndicator.innerHTML = "<span></span><span></span><span></span>";
-      
+
       // Set up abort handler
-      signal.addEventListener('abort', () => {
+      signal.addEventListener("abort", () => {
         wasAborted = true;
         // Remove loading indicator
         if (loadingIndicator.parentNode) {
@@ -233,22 +278,22 @@ class ChatApp {
 
             // Process the streamed data
             buffer += decoder.decode(value, { stream: true });
-            
+
             // Split by double newlines to handle multiple events
-            const events = buffer.split('\n\n');
-            buffer = events.pop() || ''; // Keep incomplete event in buffer
-            
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || ""; // Keep incomplete event in buffer
+
             for (const event of events) {
               if (!event.trim()) continue;
-              
+
               // Extract data from the event
-              const lines = event.split('\n');
-              let eventData = '';
-              
+              const lines = event.split("\n");
+              let eventData = "";
+
               for (const line of lines) {
-                if (line.startsWith('data: ')) {
+                if (line.startsWith("data: ")) {
                   const data = line.substring(6).trim();
-                  if (data === '[DONE]') {
+                  if (data === "[DONE]") {
                     isProcessing = false;
                     this.isWaitingForResponse = false;
                     if (loadingIndicator.parentNode === contentContainer) {
@@ -259,7 +304,7 @@ class ChatApp {
                   eventData = data;
                 }
               }
-              
+
               if (!eventData) continue;
 
               try {
@@ -281,9 +326,9 @@ class ChatApp {
                   contentContainer.innerHTML = formattedMessage;
                   this.scrollToBottom();
                 }
-                
+
                 // Handle done event
-                if (parsedData.type === 'done') {
+                if (parsedData.type === "done") {
                   isProcessing = false;
                   this.isWaitingForResponse = false;
                   if (loadingIndicator.parentNode === contentContainer) {
@@ -292,7 +337,12 @@ class ChatApp {
                   return;
                 }
               } catch (e) {
-                console.error("Error parsing event data:", e, "Data:", eventData);
+                console.error(
+                  "Error parsing event data:",
+                  e,
+                  "Data:",
+                  eventData
+                );
               }
             }
 
@@ -301,8 +351,8 @@ class ChatApp {
           }
         } catch (error) {
           // Don't show error if the request was aborted intentionally
-          if (error.name === 'AbortError') {
-            console.log('Request was aborted by user');
+          if (error.name === "AbortError") {
+            console.log("Request was aborted by user");
             return;
           }
           console.error("Error in processChunk:", error);
@@ -315,8 +365,8 @@ class ChatApp {
       await processChunk();
     } catch (error) {
       // Don't show error if the request was aborted intentionally
-      if (error.name === 'AbortError') {
-        console.log('Streaming was aborted by user');
+      if (error.name === "AbortError") {
+        console.log("Streaming was aborted by user");
         return;
       }
       console.error("Error in streamAssistantResponse:", error);
@@ -348,7 +398,10 @@ class ChatApp {
       .replace(/^## (.*$)/gm, "<h2>$1</h2>")
       .replace(/^# (.*$)/gm, "<h1>$1</h1>")
       // Add link formatting with markdown style [text](url)
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+      )
       .replace(/\n/g, "<br>");
 
     // Handle lists
@@ -407,20 +460,23 @@ class ChatApp {
 
     // Add click event to copy button
     copyButton.addEventListener("click", () => {
-      navigator.clipboard.writeText(content).then(() => {
-        // Show visual feedback
-        const originalIcon = copyButton.innerHTML;
-        copyButton.innerHTML = '<i class="fas fa-check"></i>';
-        copyButton.style.color = "var(--success-color)";
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-          copyButton.innerHTML = originalIcon;
-          copyButton.style.color = "";
-        }, 2000);
-      }).catch(err => {
-        console.error("Failed to copy text: ", err);
-      });
+      navigator.clipboard
+        .writeText(content)
+        .then(() => {
+          // Show visual feedback
+          const originalIcon = copyButton.innerHTML;
+          copyButton.innerHTML = '<i class="fas fa-check"></i>';
+          copyButton.style.color = "var(--success-color)";
+
+          // Reset after 2 seconds
+          setTimeout(() => {
+            copyButton.innerHTML = originalIcon;
+            copyButton.style.color = "";
+          }, 2000);
+        })
+        .catch((err) => {
+          console.error("Failed to copy text: ", err);
+        });
     });
 
     const contentDiv = document.createElement("div");
@@ -469,7 +525,7 @@ class ChatApp {
       // First, create a new chat with a temporary ID
       const tempChatId = `new-chat-${Date.now()}`;
       this.currentChatId = tempChatId;
-      
+
       // Create the chat in the backend
       const response = await fetch("/api/chats", {
         method: "POST",
@@ -478,18 +534,22 @@ class ChatApp {
         },
         body: JSON.stringify({
           user_id: this.userId,
-          title: firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : ''),
+          title:
+            firstMessage.substring(0, 30) +
+            (firstMessage.length > 30 ? "..." : ""),
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to create chat: ${response.status} - ${errorText}`);
+        console.error(
+          `Failed to create chat: ${response.status} - ${errorText}`
+        );
         return tempChatId; // Return the temp ID if creation fails
       }
 
       const data = await response.json();
-      
+
       // If we get a chat_id in the response, use it
       if (data?.chat_id) {
         this.currentChatId = data.chat_id;
@@ -571,9 +631,9 @@ class ChatApp {
         menuBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           const isOpen = dropdown.classList.contains("show");
-          
+
           // Close all other dropdowns
-          document.querySelectorAll(".chat-dropdown.show").forEach(d => {
+          document.querySelectorAll(".chat-dropdown.show").forEach((d) => {
             if (d !== dropdown) {
               d.classList.remove("show");
               const btn = d.previousElementSibling;
@@ -582,7 +642,7 @@ class ChatApp {
               }
             }
           });
-          
+
           // Toggle current dropdown
           dropdown.classList.toggle("show", !isOpen);
           menuBtn.setAttribute("aria-expanded", !isOpen);
@@ -595,7 +655,7 @@ class ChatApp {
             const action = btn.dataset.action;
             dropdown.classList.remove("show");
             menuBtn.setAttribute("aria-expanded", "false");
-            
+
             if (action === "delete") {
               if (confirm("Are you sure you want to delete this chat?")) {
                 this.deleteChat(chatId);
@@ -612,22 +672,28 @@ class ChatApp {
         chatItem.appendChild(chatContent);
         chatItem.appendChild(menuBtn);
         chatItem.appendChild(dropdown);
-        
+
         // Handle chat item click
         chatItem.addEventListener("click", (e) => {
-          if (!e.target.closest(".chat-menu-btn") && !e.target.closest(".chat-dropdown")) {
+          if (
+            !e.target.closest(".chat-menu-btn") &&
+            !e.target.closest(".chat-dropdown")
+          ) {
             this.loadChat(chatId);
           }
         });
-        
+
         // Close dropdown when clicking outside
         document.addEventListener("click", (e) => {
-          if (!chatItem.contains(e.target) && !e.target.closest(".chat-menu-btn")) {
+          if (
+            !chatItem.contains(e.target) &&
+            !e.target.closest(".chat-menu-btn")
+          ) {
             dropdown.classList.remove("show");
             menuBtn.setAttribute("aria-expanded", "false");
           }
         });
-        
+
         // Close dropdown on escape key
         document.addEventListener("keydown", (e) => {
           if (e.key === "Escape" && dropdown.classList.contains("show")) {
@@ -636,7 +702,7 @@ class ChatApp {
             menuBtn.focus();
           }
         });
-        
+
         historyItems.appendChild(chatItem);
       }
 
@@ -840,7 +906,24 @@ class ChatApp {
   }
 
   openProfileModal() {
-    document.getElementById("profile-modal").style.display = "block";
+    const modal = document.getElementById('profile-modal');
+    const sidebar = document.getElementById('sidebar');
+    
+    // Close sidebar if open
+    if (sidebar.classList.contains('active')) {
+      this.toggleSidebar();
+    }
+    
+    // Open modal
+    modal.style.display = 'block';
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+    
+    // Focus on first input for better accessibility
+    const firstInput = modal.querySelector('input, button, [tabindex]');
+    if (firstInput) {
+      firstInput.focus();
+    }
   }
 
   closeProfileModal() {
@@ -1000,19 +1083,19 @@ class ChatApp {
         // Store a reference to the current controller
         const controller = this.abortController;
         this.abortController = null; // Clear it first to prevent multiple abort calls
-        
+
         // Abort the request
         controller.abort();
-        
+
         // Show a message indicating the generation was stopped
         const messagesContainer = document.getElementById("chat-messages");
-        const stopMessage = document.createElement('div');
-        stopMessage.className = 'info-message';
-        stopMessage.textContent = 'Response generation was stopped.';
+        const stopMessage = document.createElement("div");
+        stopMessage.className = "info-message";
+        stopMessage.textContent = "Response generation was stopped.";
         messagesContainer.appendChild(stopMessage);
         this.scrollToBottom();
       } catch (error) {
-        console.error('Error stopping generation:', error);
+        console.error("Error stopping generation:", error);
       } finally {
         this.abortController = null;
         this.isWaitingForResponse = false;
@@ -1087,6 +1170,30 @@ class ChatApp {
       }
 
       return false; // Indicate failure
+    }
+  }
+
+  toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const isOpening = !sidebar.classList.contains('active');
+    
+    // Close profile modal if open
+    if (isOpening) {
+      this.closeProfileModal();
+    }
+    
+    // Toggle sidebar
+    sidebar.classList.toggle('active', isOpening);
+    overlay.classList.toggle('active', isOpening);
+    
+    // Toggle body class for disabling interactions
+    if (isOpening) {
+      document.body.classList.add('sidebar-open');
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.classList.remove('sidebar-open');
+      document.body.style.overflow = '';
     }
   }
 }
